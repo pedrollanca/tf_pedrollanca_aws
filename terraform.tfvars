@@ -1,1 +1,3 @@
-aws_account_id = "123456789012" /*Replace with Account ID*/
+/* Terraform Cloud variables will precede this file */
+AWS_ACCOUNT_ID = "ACCOUNT_ID" /*Replace with Account ID*/
+AWS_ROLE_ARN = "arn:aws:iam::ACCOUNT_ID:role/TerraformExecutionRole"
