@@ -6,4 +6,13 @@ terraform {
       version = "~> 4.0"
     }
   }
+
+  backend "remote" {
+    hostname     = "app.terraform.io"
+    organization = "pedrollanca"
+    workspaces {
+      name = "tf_pedrollanca_aws"
+    }
+  }
+
 }
