@@ -27,9 +27,15 @@ resource "aws_s3_bucket_versioning" "versioning" {
   }
 }
 
-# Define the destination bucket for logging
 resource "aws_s3_bucket" "logging_bucket" {
   bucket = "account-logging-${random_id.bucket_suffix.hex}"
+
+  # Enable ACL (required for CloudFront logging)
+  acl = "log-delivery-write"
+
+  tags = {
+    Name = "${var.project_name}-logging-bucket"
+  }
 }
 
 # Step 4: Create an SSL Certificate (ACM) for Your Domain
