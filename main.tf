@@ -32,26 +32,6 @@ resource "aws_s3_bucket" "logging_bucket" {
   bucket = "account-logging-${random_id.bucket_suffix.hex}"
 }
 
-# Configure logging for the S3 bucket
-resource "aws_s3_bucket_logging" "example" {
-  bucket        = aws_s3_bucket.logging_bucket.id
-  target_bucket = aws_s3_bucket.logging_bucket.id
-  target_prefix = var.logging_bucket_prefix
-}
-
-# Configure S3 Website Hosting
-resource "aws_s3_bucket_website_configuration" "static_website" {
-  bucket = aws_s3_bucket.static_website.id
-
-  index_document {
-    suffix = var.static_website_index_document
-  }
-
-  error_document {
-    key = var.static_website_error_document
-  }
-}
-
 # Step 4: Create an SSL Certificate (ACM) for Your Domain
 resource "aws_acm_certificate" "ssl_certificate" {
   domain_name       = var.domain
@@ -138,6 +118,13 @@ resource "aws_cloudfront_distribution" "static_website" {
   }
 
   default_root_object = var.static_website_index_document
+
+  # Logging Configuration for CloudFront
+  logging_config {
+    bucket = aws_s3_bucket.logging_bucket.bucket_regional_domain_name
+    prefix = var.logging_bucket_prefix
+    include_cookies = false # Optional: include cookies information in logs
+  }
 
   tags = {
     Name = "${var.project_name}-cloudfront"
