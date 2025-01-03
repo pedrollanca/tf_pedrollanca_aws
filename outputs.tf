@@ -4,12 +4,6 @@ output "bucket_name" {
   description = "The name of the S3 bucket hosting the static website"
 }
 
-# Output the S3 static website endpoint
-output "website_endpoint" {
-  value       = aws_s3_bucket_website_configuration.static_website.website_endpoint
-  description = "The S3 static website endpoint URL"
-}
-
 # Output the Route 53 record name
 output "route53_record_name" {
   value       = aws_route53_record.www.name
