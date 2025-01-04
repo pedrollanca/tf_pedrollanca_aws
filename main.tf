@@ -145,6 +145,16 @@ resource "aws_cloudfront_distribution" "static_website" {
   }
 }
 
+# Block public access settings (allow bucket policies temporarily)
+resource "aws_s3_bucket_public_access_block" "allow_bucket_policy" {
+  bucket = aws_s3_bucket.static_website.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = true
+  restrict_public_buckets = false
+}
+
 # Update S3 bucket policy to allow only access from custom domain
 resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
   bucket = aws_s3_bucket.static_website.bucket
