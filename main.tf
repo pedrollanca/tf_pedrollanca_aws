@@ -114,8 +114,23 @@ resource "aws_cloudfront_distribution" "static_website" {
     }
 
     default_ttl = var.cloudfront_default_ttl  # TTL fetched from variable
+    error_cached_methods = ["GET", "HEAD"]
     max_ttl = var.cloudfront_max_ttl      # TTL fetched from variable
     min_ttl = var.cloudfront_min_ttl      # TTL fetched from variable
+  }
+
+  custom_error_response {
+    error_caching_min_ttl = 10
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/${var.static_website_error_document}"
+  }
+
+  custom_error_response {
+    error_caching_min_ttl = 10
+    error_code            = 404
+    response_code         = 200
+    response_page_path    = "/${var.static_website_error_document}"
   }
 
   # Enable SSL using ACM certificate
