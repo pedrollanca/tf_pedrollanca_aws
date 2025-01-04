@@ -151,13 +151,13 @@ resource "aws_cloudfront_distribution" "static_website" {
 resource "aws_s3_bucket_public_access_block" "allow_bucket_policy" {
   bucket = aws_s3_bucket.static_website.id
 
-  block_public_acls       = true
+  block_public_acls       = false
   block_public_policy     = false # Allow public policy for CloudFront integration
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+  ignore_public_acls      = false
+  restrict_public_buckets = false
 }
 
-# Update S3 bucket policy to allow only access from custom domain
+# Update S3 bucket policy to allow only access from CloudFront
 resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
   bucket = aws_s3_bucket.static_website.bucket
 
@@ -166,15 +166,14 @@ resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
     Statement = [
       {
         Effect = "Allow",
-        Principal: "*",
-        Action: "s3:GetObject",
-        Resource: "${aws_s3_bucket.static_website.arn}/*",
-        Condition: {
-          StringLike: {
-            "aws:Referer": [
-              "https://${var.domain}/*",
-              "https://www.${var.domain}/*"
-            ]
+        Principal = {
+          "Service": "cloudfront.amazonaws.com"
+        },
+        Action   = "s3:GetObject",
+        Resource = "${aws_s3_bucket.static_website.arn}/*",
+        Condition = {
+          StringEquals: {
+            "AWS:SourceArn": aws_cloudfront_distribution.static_website.arn
           }
         }
       }
