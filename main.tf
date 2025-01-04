@@ -133,6 +133,8 @@ resource "aws_cloudfront_distribution" "static_website" {
 
   default_root_object = var.static_website_index_document
 
+  aliases = var.acm_subject_alternative_names
+
   # Logging configuration for CloudFront
   logging_config {
     bucket          = aws_s3_bucket.logging_bucket.bucket_regional_domain_name
