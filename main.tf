@@ -1,15 +1,15 @@
-# Step 1: Lookup the Existing Route 53 Hosted Zone
+# Lookup the existing Route 53 hosted zone
 data "aws_route53_zone" "existing_zone" {
   name         = var.domain
   private_zone = false
 }
 
-# Step 2: Generate a Random Suffix for Unique S3 Bucket Name
+# Generate a random suffix for unique S3 bucket name
 resource "random_id" "bucket_suffix" {
   byte_length = 8
 }
 
-# Step 3: Create the S3 Bucket for Static Website Hosting
+# Create the S3 bucket for static website hosting
 resource "aws_s3_bucket" "static_website" {
   bucket = "${var.project_name}-${random_id.bucket_suffix.hex}" # e.g., homesite-abc12345
 
@@ -18,7 +18,7 @@ resource "aws_s3_bucket" "static_website" {
   }
 }
 
-# Enable versioning for safety
+# Enable versioning for the S3 bucket
 resource "aws_s3_bucket_versioning" "versioning" {
   bucket = aws_s3_bucket.static_website.id
 
@@ -27,6 +27,7 @@ resource "aws_s3_bucket_versioning" "versioning" {
   }
 }
 
+# Create the S3 bucket for logging
 resource "aws_s3_bucket" "logging_bucket" {
   bucket = "account-logging-${random_id.bucket_suffix.hex}"
 
@@ -35,6 +36,7 @@ resource "aws_s3_bucket" "logging_bucket" {
   }
 }
 
+# Define ownership controls for the logging bucket
 resource "aws_s3_bucket_ownership_controls" "logging_bucket_controls" {
   bucket = aws_s3_bucket.logging_bucket.id
 
@@ -43,7 +45,7 @@ resource "aws_s3_bucket_ownership_controls" "logging_bucket_controls" {
   }
 }
 
-# Step 4: Create an SSL Certificate (ACM) for Your Domain
+# Create an SSL certificate (ACM) for your domain
 resource "aws_acm_certificate" "ssl_certificate" {
   domain_name       = var.domain
   validation_method = "DNS"
@@ -55,7 +57,7 @@ resource "aws_acm_certificate" "ssl_certificate" {
   }
 }
 
-# Validate Domain Ownership for SSL Certificate
+# Validate domain ownership for the SSL certificate
 resource "aws_route53_record" "certificate_validation" {
   for_each = {
     for dvo in aws_acm_certificate.ssl_certificate.domain_validation_options : dvo.domain_name => {
@@ -72,12 +74,13 @@ resource "aws_route53_record" "certificate_validation" {
   ttl     = 300
 }
 
+# Link the SSL certificate with domain validation
 resource "aws_acm_certificate_validation" "default" {
   certificate_arn         = aws_acm_certificate.ssl_certificate.arn
   validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
 }
 
-# Step 5: Create a CloudFront Distribution with HTTPS for Your S3 Bucket
+# Create a CloudFront distribution with HTTPS for the S3 bucket
 resource "aws_cloudfront_origin_access_control" "oac" {
   name                              = "${var.project_name}-oac"
   description                       = "OAC for CloudFront to restrict S3 access"
@@ -89,19 +92,19 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 resource "aws_cloudfront_distribution" "static_website" {
   enabled = true
 
-  # Origin Configuration for CloudFront (Serving S3 bucket content)
+  # Configure origin (S3 bucket) for CloudFront
   origin {
     domain_name              = aws_s3_bucket.static_website.bucket_regional_domain_name
     origin_id                = aws_s3_bucket.static_website.id
     origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
   }
 
-  # Default Cache Behavior
+  # Define default cache behavior
   default_cache_behavior {
-    target_origin_id       = aws_s3_bucket.static_website.id
+    target_origin_id = aws_s3_bucket.static_website.id
     viewer_protocol_policy = "redirect-to-https" # Enforce HTTPS
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
+    allowed_methods = ["GET", "HEAD"]
+    cached_methods = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = false
@@ -110,12 +113,12 @@ resource "aws_cloudfront_distribution" "static_website" {
       }
     }
 
-    default_ttl = var.cloudfront_default_ttl  # Fetch from variable
-    max_ttl     = var.cloudfront_max_ttl      # Fetch from variable
-    min_ttl     = var.cloudfront_min_ttl      # Fetch from variable
+    default_ttl = var.cloudfront_default_ttl  # TTL fetched from variable
+    max_ttl = var.cloudfront_max_ttl      # TTL fetched from variable
+    min_ttl = var.cloudfront_min_ttl      # TTL fetched from variable
   }
 
-  # Enable SSL using ACM Certificate
+  # Enable SSL using ACM certificate
   viewer_certificate {
     acm_certificate_arn      = aws_acm_certificate_validation.default.certificate_arn
     ssl_support_method       = "sni-only"
@@ -130,10 +133,10 @@ resource "aws_cloudfront_distribution" "static_website" {
 
   default_root_object = var.static_website_index_document
 
-  # Logging Configuration for CloudFront
+  # Logging configuration for CloudFront
   logging_config {
-    bucket = aws_s3_bucket.logging_bucket.bucket_regional_domain_name
-    prefix = var.logging_bucket_prefix
+    bucket          = aws_s3_bucket.logging_bucket.bucket_regional_domain_name
+    prefix          = var.logging_bucket_prefix
     include_cookies = false # Optional: include cookies information in logs
   }
 
@@ -142,7 +145,7 @@ resource "aws_cloudfront_distribution" "static_website" {
   }
 }
 
-# Step 6: Update S3 Bucket Policy for CloudFront Only Access
+# Update S3 bucket policy to allow only CloudFront access
 resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
   bucket = aws_s3_bucket.static_website.bucket
 
@@ -152,13 +155,13 @@ resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
       {
         Effect = "Allow",
         Principal = {
-          "Service": "cloudfront.amazonaws.com"
+          "Service" : "cloudfront.amazonaws.com"
         },
         Action   = "s3:GetObject",
         Resource = "${aws_s3_bucket.static_website.arn}/*",
         Condition = {
-          StringEquals: {
-            "AWS:SourceArn": aws_cloudfront_distribution.static_website.arn
+          StringEquals : {
+            "AWS:SourceArn" : aws_cloudfront_distribution.static_website.arn
           }
         }
       }
@@ -166,7 +169,7 @@ resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
   })
 }
 
-# Step 7: Route 53 DNS Record for Your Domain and Subdomain
+# Create Route 53 DNS record for the www subdomain
 resource "aws_route53_record" "www" {
   zone_id = data.aws_route53_zone.existing_zone.zone_id
   name    = "www.${var.domain}"
@@ -178,6 +181,7 @@ resource "aws_route53_record" "www" {
   }
 }
 
+# Create Route 53 DNS record for the root domain
 resource "aws_route53_record" "root" {
   zone_id = data.aws_route53_zone.existing_zone.zone_id
   name    = var.domain
@@ -189,12 +193,11 @@ resource "aws_route53_record" "root" {
   }
 }
 
-
 # Upload index.html to the S3 bucket
 resource "aws_s3_object" "index" {
   bucket       = aws_s3_bucket.static_website.bucket
   key          = var.static_website_index_document
-  source       = "resources/website/index.html" # Path to your local index.html file
+  source = "resources/website/index.html" # Path to your local index.html file
   content_type = "text/html"
 }
 
@@ -202,6 +205,6 @@ resource "aws_s3_object" "index" {
 resource "aws_s3_object" "error" {
   bucket       = aws_s3_bucket.static_website.bucket
   key          = var.static_website_error_document
-  source       = "resources/website/error.html" # Path to your local index.html file
+  source = "resources/website/error.html" # Path to your local index.html file
   content_type = "text/html"
 }
