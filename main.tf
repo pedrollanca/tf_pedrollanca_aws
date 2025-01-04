@@ -30,11 +30,16 @@ resource "aws_s3_bucket_versioning" "versioning" {
 resource "aws_s3_bucket" "logging_bucket" {
   bucket = "account-logging-${random_id.bucket_suffix.hex}"
 
-  # Enable ACL (required for CloudFront logging)
-  acl = "log-delivery-write"
-
   tags = {
     Name = "${var.project_name}-logging-bucket"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "logging_bucket_controls" {
+  bucket = aws_s3_bucket.logging_bucket.id
+
+  rule {
+    object_ownership = "ObjectWriter"
   }
 }
 
