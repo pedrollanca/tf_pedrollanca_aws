@@ -114,7 +114,6 @@ resource "aws_cloudfront_distribution" "static_website" {
     }
 
     default_ttl = var.cloudfront_default_ttl  # TTL fetched from variable
-    error_cached_methods = ["GET", "HEAD"]
     max_ttl = var.cloudfront_max_ttl      # TTL fetched from variable
     min_ttl = var.cloudfront_min_ttl      # TTL fetched from variable
   }
