@@ -47,7 +47,7 @@ resource "aws_s3_bucket_ownership_controls" "logging_bucket_controls" {
 
 # Create an SSL certificate (ACM) for your domain
 resource "aws_acm_certificate" "ssl_certificate" {
-  domain_name       = var.domain
+  domain_name       = "*.${var.domain}"
   validation_method = "DNS"
 
   subject_alternative_names = var.acm_subject_alternative_names
