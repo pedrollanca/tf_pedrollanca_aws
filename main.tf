@@ -344,16 +344,20 @@ resource "aws_route53_record" "root_redirect" {
 
 # Upload index.html to the S3 bucket
 resource "aws_s3_object" "index" {
-  bucket       = aws_s3_bucket.static_website.bucket
-  key          = var.static_website_index_document
-  source = "resources/website/index.html" # Path to your local index.html file
-  content_type = "text/html"
+  bucket        = aws_s3_bucket.static_website.bucket
+  key           = var.static_website_index_document
+  source        = "resources/website/index.html" # Path to your local index.html file
+  content_type  = "text/html"
+  etag          = filemd5("resources/website/index.html")
+  cache_control = "max-age=300"  # 5 minutes cache
 }
 
 # Upload error.html to the S3 bucket
 resource "aws_s3_object" "error" {
-  bucket       = aws_s3_bucket.static_website.bucket
-  key          = var.static_website_error_document
-  source = "resources/website/error.html" # Path to your local index.html file
-  content_type = "text/html"
+  bucket        = aws_s3_bucket.static_website.bucket
+  key           = var.static_website_error_document
+  source        = "resources/website/error.html" # Path to your local error.html file
+  content_type  = "text/html"
+  etag          = filemd5("resources/website/error.html")
+  cache_control = "max-age=300"  # 5 minutes cache
 }
