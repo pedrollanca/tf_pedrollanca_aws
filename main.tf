@@ -27,6 +27,17 @@ resource "aws_s3_bucket_versioning" "versioning" {
   }
 }
 
+# Enable server-side encryption for the static website bucket
+resource "aws_s3_bucket_server_side_encryption_configuration" "static_website" {
+  bucket = aws_s3_bucket.static_website.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
 # Create the S3 bucket for logging
 resource "aws_s3_bucket" "logging_bucket" {
   bucket = "account-logging-${random_id.bucket_suffix.hex}"
@@ -43,6 +54,27 @@ resource "aws_s3_bucket_ownership_controls" "logging_bucket_controls" {
   rule {
     object_ownership = "ObjectWriter"
   }
+}
+
+# Enable server-side encryption for the logging bucket
+resource "aws_s3_bucket_server_side_encryption_configuration" "logging_bucket" {
+  bucket = aws_s3_bucket.logging_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# Block public access for the logging bucket
+resource "aws_s3_bucket_public_access_block" "logging_bucket" {
+  bucket = aws_s3_bucket.logging_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 # Create an SSL certificate (ACM) for your domain
@@ -80,6 +112,94 @@ resource "aws_acm_certificate_validation" "default" {
   validation_record_fqdns = [for record in aws_route53_record.certificate_validation : record.fqdn]
 }
 
+# Create CloudFront response headers policy for security headers
+resource "aws_cloudfront_response_headers_policy" "security_headers" {
+  name = "${var.project_name}-security-headers"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      override                   = true
+    }
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+  }
+}
+
+# Create WAF Web ACL for CloudFront protection
+resource "aws_wafv2_web_acl" "cloudfront_waf" {
+  name  = "${var.project_name}-waf"
+  scope = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "AWS-AWSManagedRulesCommonRuleSet"
+    priority = 1
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesCommonRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = false
+      metric_name                = "CommonRuleSetMetric"
+      sampled_requests_enabled   = false
+    }
+  }
+
+  rule {
+    name     = "AWS-AWSManagedRulesKnownBadInputsRuleSet"
+    priority = 2
+
+    override_action {
+      none {}
+    }
+
+    statement {
+      managed_rule_group_statement {
+        name        = "AWSManagedRulesKnownBadInputsRuleSet"
+        vendor_name = "AWS"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = false
+      metric_name                = "KnownBadInputsRuleSetMetric"
+      sampled_requests_enabled   = false
+    }
+  }
+
+  tags = {
+    Name = "${var.project_name}-waf"
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = false
+    metric_name                = "${var.project_name}-waf"
+    sampled_requests_enabled   = false
+  }
+}
+
 # Create a CloudFront distribution with HTTPS for the S3 bucket
 resource "aws_cloudfront_origin_access_control" "oac" {
   name                              = "${var.project_name}-oac"
@@ -101,10 +221,11 @@ resource "aws_cloudfront_distribution" "static_website" {
 
   # Define default cache behavior
   default_cache_behavior {
-    target_origin_id = aws_s3_bucket.static_website.id
-    viewer_protocol_policy = "redirect-to-https" # Enforce HTTPS
-    allowed_methods = ["GET", "HEAD"]
-    cached_methods = ["GET", "HEAD"]
+    target_origin_id           = aws_s3_bucket.static_website.id
+    viewer_protocol_policy     = "redirect-to-https" # Enforce HTTPS
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
+    allowed_methods            = ["GET", "HEAD"]
+    cached_methods             = ["GET", "HEAD"]
 
     forwarded_values {
       query_string = false
@@ -117,6 +238,9 @@ resource "aws_cloudfront_distribution" "static_website" {
     max_ttl = var.cloudfront_max_ttl      # TTL fetched from variable
     min_ttl = var.cloudfront_min_ttl      # TTL fetched from variable
   }
+
+  # Associate WAF Web ACL with CloudFront
+  web_acl_id = aws_wafv2_web_acl.cloudfront_waf.arn
 
   custom_error_response {
     error_caching_min_ttl = 10
