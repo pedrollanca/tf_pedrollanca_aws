@@ -1,27 +1,72 @@
 
 # AWS Static Website Hosting Infrastructure
-This project provisions AWS infrastructure for hosting a secure and scalable static website. The setup includes the following components:
+This project provisions AWS infrastructure for hosting a **secure and scalable** static website with enterprise-grade security features. The setup includes comprehensive security controls, encryption, and threat protection.
 
 ## Overview
 
+This infrastructure implements security best practices including:
+- **End-to-end encryption** for data at rest and in transit
+- **Web Application Firewall (WAF)** protection against common threats
+- **Security headers** for enhanced browser security
+- **Strict access controls** with Origin Access Control (OAC)
+- **Comprehensive logging** for security monitoring
 
-### Amazon S3 Bucket
-A bucket is created for hosting the static website. It stores the website's `index.html` and `error.html` files. A random suffix is appended to the bucket name to ensure uniqueness.
+## Components
+
+### Amazon S3 Buckets
+- **Website Bucket**: Hosts static website files (`index.html`, `error.html`) with AES-256 server-side encryption
+- **Logging Bucket**: Stores CloudFront access logs with encryption and strict public access blocking
+- **Versioning**: Enabled on the website bucket for data protection and recovery
+- **Random Suffix**: Appended to bucket names to ensure global uniqueness
 
 ### CloudFront Distribution
-A Content Delivery Network (CDN) distribution is configured to serve the website through a global network of edge locations. Origin Access Control (OAC) is used to restrict direct access to the S3 bucket, ensuring all content is accessed via CloudFront.
+A Content Delivery Network (CDN) distribution serves the website through a global network of edge locations with enhanced security:
+- **Origin Access Control (OAC)**: Restricts direct S3 access, ensuring all traffic flows through CloudFront
+- **HTTPS Enforcement**: Redirects all HTTP traffic to HTTPS (TLS 1.2 minimum)
+- **Security Headers**: Automatically applies security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
+- **Custom Error Pages**: Handles 403/404 errors with custom error document
+
+### AWS WAF (Web Application Firewall)
+Provides protection against common web exploits and attacks:
+- **AWS Managed Rule Sets**: 
+  - Common Rule Set: Protection against OWASP Top 10 vulnerabilities
+  - Known Bad Inputs Rule Set: Blocks requests with known malicious patterns
+- **CloudWatch Integration**: Monitoring and metrics for security events
 
 ### Amazon Route 53
-A DNS configuration allows the usage of a custom domain for the website. This ensures user-friendly URLs.
+DNS configuration for custom domain management:
+- **Wildcard SSL Certificate**: Supports multiple subdomains
+- **Alias Records**: Efficient routing to CloudFront distribution
+- **DNS Validation**: Automated certificate validation
 
 ### AWS Certificate Manager (ACM)
-A TLS/SSL certificate is provisioned to enable secure HTTPS access for the static website via CloudFront.
+- **Wildcard TLS/SSL Certificate**: Secures multiple subdomains
+- **Automatic Renewal**: AWS manages certificate lifecycle
+- **DNS Validation**: Automated domain ownership verification
 
-### Logging Bucket
-An additional S3 bucket is created for storing server access logs for both the website bucket and the CloudFront distribution.
+### Security Headers Policy
+CloudFront response headers policy that adds security headers to all responses:
+- **Strict-Transport-Security (HSTS)**: Forces HTTPS for 1 year, includes subdomains
+- **X-Content-Type-Options**: Prevents MIME type sniffing
+- **X-Frame-Options**: Prevents clickjacking attacks (DENY)
+- **Referrer-Policy**: Controls referrer information sharing
 
-### Bucket Policies and Permissions
-Specific policies are implemented to secure the buckets and control access. The CloudFront distribution is set up with policies that only permit content delivery through the distribution.
+### Access Controls & Encryption
+- **S3 Server-Side Encryption**: AES-256 encryption for all objects at rest
+- **Public Access Blocking**: Comprehensive blocking of public access to both buckets
+- **CloudFront-Only Access**: S3 bucket policy restricts access to CloudFront service only
+- **Signed Requests**: All CloudFront-to-S3 requests use SigV4 signing
 
-### Static Document Upload
-The `index.html` and `error.html` files are uploaded to the S3 bucket during provisioning to serve as the main and error pages of the static site.
+### Monitoring & Logging
+- **CloudFront Access Logs**: Detailed request logging stored in encrypted S3 bucket
+- **WAF Metrics**: Security event monitoring through CloudWatch
+- **Access Log Analysis**: Supports security monitoring and traffic analysis
+
+## Security Features Summary
+✅ **Data Encryption**: At rest (S3) and in transit (HTTPS/TLS 1.2+)  
+✅ **Web Application Firewall**: Protection against common attacks  
+✅ **Security Headers**: Browser-level security enhancements  
+✅ **Access Controls**: Zero direct public access to S3 buckets  
+✅ **HTTPS Enforcement**: All traffic encrypted with modern TLS  
+✅ **Comprehensive Logging**: Full request logging for security monitoring  
+✅ **Automated Security**: AWS managed rules and certificate management
