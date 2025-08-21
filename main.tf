@@ -210,7 +210,8 @@ resource "aws_cloudfront_origin_access_control" "oac" {
 }
 
 resource "aws_cloudfront_distribution" "static_website" {
-  enabled = true
+  enabled     = true
+  price_class = "PriceClass_100"
 
   # Configure origin (S3 bucket) for CloudFront
   origin {
@@ -265,7 +266,8 @@ resource "aws_cloudfront_distribution" "static_website" {
 
   restrictions {
     geo_restriction {
-      restriction_type = "none"
+      restriction_type = "whitelist"
+      locations        = ["US"]
     }
   }
 
