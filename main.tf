@@ -331,13 +331,13 @@ resource "aws_route53_record" "www" {
   }
 }
 
-resource "aws_route53_record" "root_redirect" {
+resource "aws_route53_record" "root" {
   zone_id = data.aws_route53_zone.existing_zone.zone_id
   name    = var.domain
   type    = "A"
   alias {
-    name                   = aws_route53_record.www.name
-    zone_id                = aws_route53_record.www.zone_id
+    name                   = aws_cloudfront_distribution.static_website.domain_name
+    zone_id                = aws_cloudfront_distribution.static_website.hosted_zone_id
     evaluate_target_health = false
   }
 }
