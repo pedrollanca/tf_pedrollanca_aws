@@ -92,11 +92,13 @@ resource "aws_acm_certificate" "ssl_certificate" {
 # Validate domain ownership for the SSL certificate
 resource "aws_route53_record" "certificate_validation" {
   for_each = {
-    for dvo in toset(aws_acm_certificate.ssl_certificate.domain_validation_options) : dvo.resource_record_name => {
-      name   = dvo.resource_record_name
-      record = dvo.resource_record_value
-      type   = dvo.resource_record_type
-    }
+    for dvo in distinct([
+      for option in aws_acm_certificate.ssl_certificate.domain_validation_options : {
+        name   = option.resource_record_name
+        record = option.resource_record_value
+        type   = option.resource_record_type
+      }
+    ]) : dvo.name => dvo
   }
 
   zone_id = data.aws_route53_zone.existing_zone.zone_id
